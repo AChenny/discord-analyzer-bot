@@ -1,5 +1,6 @@
 const https = require('https')
 const fs = require('fs');
+const googleDriveHelper  = require('./googleDriveHelper.js')
 
 // Input: A proxy link to the file to download
 // Description: Takes a link and downloads it to a local directory
