@@ -14,9 +14,10 @@ client.on('ready', () => {
     console.log('Client is ready!');
 });
 
+// Main message handler
 client.on('message', msg=>{
-    if(msg.content === "Hello") {
-        msg.reply("Hello world.");
+    if (msg.attachments.size > 0) {
+        console.log("Contains file.");
     }
 })
 
