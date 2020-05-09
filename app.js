@@ -19,6 +19,9 @@ client.on('message', msg=>{
     if (msg.attachments.size > 0) {
         console.log("Contains file.");
     }
+    if (msg.embeds.length > 0) {
+        console.log("Contains embeds.");
+    }
 })
 
 // Login to client
