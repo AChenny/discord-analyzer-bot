@@ -4,15 +4,6 @@ const googleDriveHelper  = require('./googleDriveHelper.js')
 const request = require('request');
 
 // Input: A proxy link to the file to download
-// Description: Takes a link and downloads it to a local directory
-// const download = function(url){
-//     const file = fs.createWriteStream("./test.png");
-//     const request = https.get(url, function(response) {
-//         response.pipe(file);
-//     });
-// }
-
-// Input: A proxy link to the file to download
 // Output: Returns the streamed data as a Promise object
 const download = function(url)  {
     return new Promise(function (resolve, reject) {
@@ -36,11 +27,11 @@ const download = function(url)  {
     });
 }
 
-// Input: A link to a picture
-// Description: Takes the link and uploads it to the google drive
-async function upload_to_drive(url) {
+// Input: A link to a picture, filename, and username
+// Description: Takes the link and uploads it to the google drive into that usernames folder
+async function upload_to_drive(url, filename, username) {
     const data = await download(url);
-    googleDriveHelper.uploadFile(data);
+    googleDriveHelper.uploadFile(data, filename, username);
 }
 
 // Export the functions
