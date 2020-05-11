@@ -21,7 +21,7 @@ client.on('ready', () => {
 client.on('message', msg=>{
     if (msg.attachments.size > 0) {
         msg.attachments.forEach(function(value, key) {
-            fileHelper.download((value['proxyURL']))
+            fileHelper.upload_to_drive((value['proxyURL']))
         })
     }
     if (msg.embeds.length > 0) {
