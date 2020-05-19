@@ -30,8 +30,8 @@ const download = function(url)  {
 // Input: A link to a picture, filename, and username
 // Description: Takes the link and uploads it to the google drive into that usernames folder
 async function upload_to_drive(url, filename, username) {
-    const data = await download(url);
-    googleDriveHelper.uploadFile(data, filename, username);
+  const data = await download(url);
+  googleDriveHelper.uploadFile(data, filename, username);
 }
 
 // Export the functions

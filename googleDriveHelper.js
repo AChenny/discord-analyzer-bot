@@ -66,38 +66,6 @@ function getAccessToken(oAuth2Client, callback) {
   });
 }
 
-// /**
-// * Describe with given media and metaData and upload it using google.drive.create method()
-// */ 
-// function uploadFile(filePath) {
-//     fs.readFile('credentials.json', (err, content) => {
-//         if (err) return console.log('Error loading client secret file:', err);
-//         // Authorize a client with credentials, then call the Google Drive API.
-//         authorize(JSON.parse(content), function (auth) {
-//             const drive = google.drive({version: 'v3', auth});
-//             const fileMetadata = {
-//             'name': 'testphoto.png'
-//             };
-//             const media = {
-//             mimeType: 'image/png',
-//             body: fs.createReadStream(filePath)
-//             };
-//             drive.files.create({
-//             resource: fileMetadata,
-//             media: media,
-//             fields: 'id'
-//             }, (err, file) => {
-//             if (err) {
-//                 // Handle error
-//                 console.error(err);
-//             } else {
-//                 console.log('File Id: ', file.id);
-//             }
-//             });
-//         });
-//     });
-// }
-
 /**
 * Describe with given media and metaData and upload it using google.drive.create method()
 */ 

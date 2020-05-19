@@ -21,7 +21,8 @@ client.on('ready', () => {
 client.on('message', msg=>{
     if (msg.attachments.size > 0) {
         msg.attachments.forEach(function(value, key) {
-            fileHelper.upload_to_drive((value['proxyURL']))
+            // Upload to drive using the proxyURL, file id, and the username as inputs
+            fileHelper.upload_to_drive(value['proxyURL'], value['id'], msg.author.username);
         })
     }
     if (msg.embeds.length > 0) {
