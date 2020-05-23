@@ -63,7 +63,7 @@ function getAccessToken(oAuth2Client, callback) {
 /**
 * Describe with given media and metaData and upload it using google.drive.create method()
 */ 
-function uploadFile(data, fileName, folderName) {
+function uploadFile(data, fileName, username) {
   // Read from credentials and store the content in a JSON object
   let credentialsContent = JSON.parse(fs.readFileSync('credentials.json'));
   fs.readFile('credentials.json', (err, content) => {
@@ -71,76 +71,150 @@ function uploadFile(data, fileName, folderName) {
     // Authorize a client with credentials, then call the Google Drive API.
     authorize(JSON.parse(content), function (auth) {
       const drive = google.drive({version: 'v3', auth});
-      // Check if folder exists
+      // Check if folder has been created for current month and year
       let dateFolderName = getCurrentDateFolderName();
-      getDirectoryId(drive, dateFolderName, function(dateFolderId) {
+      getDirectoryId(drive, 'root', dateFolderName, function(dateFolderId) {
         if (typeof dateFolderId == 'undefined') {
-          console.log("Creating a new folder...")
-          dateFolderId = createDirectory(drive, folderName);
+          console.log("Creating a new date folder...")
+          // With the newly created date folder, continue
+          createDirectory(drive, [], dateFolderName, function(dateFolderId) {
+            // New date folder, so user folder will not have been created -> Create one
+            console.log("Creating a user new folder...")
+            createDirectory(drive, [dateFolderId], username, function(userFolderId) {
+              console.log(userFolderId);
+              // Load file data
+              const fileMetadata = {
+                  'name': fileName,
+                  parents: [userFolderId]
+              };
+              const media = {
+                  mimeType: 'image/png',
+                  body: data
+              };
+      
+              // Upload file with the file data
+              drive.files.create({
+              resource: fileMetadata,
+              media: media,
+              fields: 'id'
+              }, 
+              (err, file) => {
+                  if (err) {
+                      // Handle error
+                      console.error(err);
+                  } else {
+                      console.log('File Id: ', file.data.id);
+                      console.log(`File created in: ${dateFolderName}/${username}`);
+                  }
+              });
+            });
+          });
         }
-        // Load file data
-        const fileMetadata = {
-            'name': fileName,
-            parents: [dateFolderId]
-        };
-        const media = {
-            mimeType: 'image/png',
-            body: data
-        };
-
-        // Upload file with the file data
-        drive.files.create({
-        resource: fileMetadata,
-        media: media,
-        fields: 'id'
-        }, 
-        (err, file) => {
-            if (err) {
-                // Handle error
-                console.error(err);
-            } else {
-                console.log('File Id: ', file.data.id);
+        else {
+          getDirectoryId(drive, [dateFolderId], username, function(userFolderId) {
+            if (typeof userFolderId == 'undefined') {
+              console.log("Creating a new user folder...")
+              createDirectory(drive, [dateFolderId], username, function(userFolderId) {
+                // Load file data
+                const fileMetadata = {
+                    'name': fileName,
+                    parents: [userFolderId]
+                };
+                const media = {
+                    mimeType: 'image/png',
+                    body: data
+                };
+        
+                // Upload file with the file data
+                drive.files.create({
+                resource: fileMetadata,
+                media: media,
+                fields: 'id'
+                }, 
+                (err, file) => {
+                    if (err) {
+                        // Handle error
+                        console.error(err);
+                    } else {
+                        console.log('File Id: ', file.data.id);
+                        console.log(`File created in: ${dateFolderName}/${username}`);
+                    }
+                });
+              });
             }
-        });
+            else {
+              const fileMetadata = {
+                'name': fileName,
+                parents: [userFolderId]
+              };
+              const media = {
+                  mimeType: 'image/png',
+                  body: data
+              };
+      
+              // Upload file with the file data
+              drive.files.create({
+              resource: fileMetadata,
+              media: media,
+              fields: 'id'
+              }, 
+              (err, file) => {
+                  if (err) {
+                      // Handle error
+                      console.error(err);
+                  } else {
+                      console.log('File Id: ', file.data.id);
+                      console.log(`File created in: ${dateFolderName}/${username}`);
+                  }
+              });
+            }
+          })
+        }
       });
     });
   });
 }
 
-// Input: The drive object and the name of the new directory
-// Output: The id of the new directory in the drive
-function createDirectory(drive, directoryName) {
+// Input: Drive object, any parents (or root), the new directory name, and a callback using the new directory id
+function createDirectory(drive, parents, directoryName, callback) {
   var fileMetadata = {
     'name': directoryName,
-    'mimeType': 'application/vnd.google-apps.folder'
+    'mimeType': 'application/vnd.google-apps.folder',
+    parents: parents
   };
+
   drive.files.create({
     resource: fileMetadata,
-    fields: 'id'
+    fields: 'id',
   }, function (err, file) {
     if (err) {
       // Handle error
       console.error(err);
     } else {
-      console.log('New Folder Id: ', file.id);
-      return file.id;
+      console.log('New Folder Id: ', file.data["id"]);
+      callback(file.data["id"]);
     }
   });
 }
 
-function getDirectoryId(drive, directoryName, callback) {
+function getDirectoryId(drive, parents, directoryName, callback) {
   // Get the directories map first, return the directory ID
-  getDirectoriesList(drive, function(directoriesMap) {
+  getDirectoriesList(drive, parents, function(directoriesMap) {
     const directoryId = directoriesMap.get(directoryName);
     callback(directoryId);
   });
 }
 
-function getDirectoriesList(drive, callback) {
+function getDirectoriesList(drive, parents, callback) {
   // Create a new directories map
   const directoriesMap = new Map();
+  let query = '';
+  if (parents != 'root') {
+    query = `'' in ${parents}`;
+  }
+
   drive.files.list({
-    fields: 'nextPageToken, files(id, name)',
+    parents: parents,
     fields: 'files(id, name, mimeType)',
   }, (err, res) => {
     if (err) return console.log('The API returned an error: ' + err);
