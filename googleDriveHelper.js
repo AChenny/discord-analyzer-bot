@@ -1,3 +1,4 @@
+"use strict";
 const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
@@ -8,13 +9,6 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly'];
 // created automatically when the authorization flow completes for the first
 // time.
 const TOKEN_PATH = 'token.json';
-
-// Load client secrets from a local file.
-fs.readFile('credentials.json', (err, content) => {
-  if (err) return console.log('Error loading client secret file:', err);
-  // Authorize a client with credentials, then call the Google Drive API.
-  authorize(JSON.parse(content), listFiles);
-});
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
@@ -69,57 +63,104 @@ function getAccessToken(oAuth2Client, callback) {
 /**
 * Describe with given media and metaData and upload it using google.drive.create method()
 */ 
-function uploadFile(data) {
-    fs.readFile('credentials.json', (err, content) => {
-        if (err) return console.log('Error loading client secret file:', err);
-        // Authorize a client with credentials, then call the Google Drive API.
-        authorize(JSON.parse(content), function (auth) {
-            const drive = google.drive({version: 'v3', auth});
-            const fileMetadata = {
-                'name': 'testphoto.png'
-            };
-            const media = {
-                mimeType: 'image/png',
-                body: data
-            };
-            drive.files.create({
-            resource: fileMetadata,
-            media: media,
-            fields: 'id'
-            }, 
-            (err, file) => {
-                if (err) {
-                    // Handle error
-                    console.error(err);
-                } else {
-                    console.log('File Id: ', file.data.id);
-                }
-            });
+function uploadFile(data, fileName, folderName) {
+  // Read from credentials and store the content in a JSON object
+  let credentialsContent = JSON.parse(fs.readFileSync('credentials.json'));
+  fs.readFile('credentials.json', (err, content) => {
+    if (err) return console.log('Error loading client secret file:', err);
+    // Authorize a client with credentials, then call the Google Drive API.
+    authorize(JSON.parse(content), function (auth) {
+      const drive = google.drive({version: 'v3', auth});
+      // Check if folder exists
+      let dateFolderName = getCurrentDateFolderName();
+      getDirectoryId(drive, dateFolderName, function(dateFolderId) {
+        if (typeof dateFolderId == 'undefined') {
+          console.log("Creating a new folder...")
+          dateFolderId = createDirectory(drive, folderName);
+        }
+        // Load file data
+        const fileMetadata = {
+            'name': fileName,
+            parents: [dateFolderId]
+        };
+        const media = {
+            mimeType: 'image/png',
+            body: data
+        };
+
+        // Upload file with the file data
+        drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id'
+        }, 
+        (err, file) => {
+            if (err) {
+                // Handle error
+                console.error(err);
+            } else {
+                console.log('File Id: ', file.data.id);
+            }
         });
+      });
     });
+  });
 }
 
-/**
- * Lists the names and IDs of up to 10 files.
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-function listFiles(auth) {
-  const drive = google.drive({version: 'v3', auth});
+// Input: The drive object and the name of the new directory
+// Output: The id of the new directory in the drive
+function createDirectory(drive, directoryName) {
+  var fileMetadata = {
+    'name': directoryName,
+    'mimeType': 'application/vnd.google-apps.folder'
+  };
+  drive.files.create({
+    resource: fileMetadata,
+    fields: 'id'
+  }, function (err, file) {
+    if (err) {
+      // Handle error
+      console.error(err);
+    } else {
+      console.log('New Folder Id: ', file.id);
+      return file.id;
+    }
+  });
+}
+
+function getDirectoryId(drive, directoryName, callback) {
+  // Get the directories map first, return the directory ID
+  getDirectoriesList(drive, function(directoriesMap) {
+    const directoryId = directoriesMap.get(directoryName);
+    callback(directoryId);
+  });
+}
+
+function getDirectoriesList(drive, callback) {
+  // Create a new directories map
+  const directoriesMap = new Map();
   drive.files.list({
-    pageSize: 10,
     fields: 'nextPageToken, files(id, name)',
+    fields: 'files(id, name, mimeType)',
   }, (err, res) => {
     if (err) return console.log('The API returned an error: ' + err);
     const files = res.data.files;
     if (files.length) {
-      console.log('Files:');
       files.map((file) => {
-        console.log(`${file.name} (${file.id})`);
+        if(file.mimeType === 'application/vnd.google-apps.folder') {
+          directoriesMap.set(file.name, file.id);
+        }
       });
     } else {
       console.log('No files found.');
     }
+    callback(directoriesMap);
   });
+}
+
+function getCurrentDateFolderName() {
+  let d = new Date();
+  return d.toLocaleDateString('default', { month: 'long', year: 'numeric'});
 }
 
 module.exports = {

@@ -31,6 +31,8 @@ const download = function(url)  {
 // Description: Takes the link and uploads it to the google drive into that usernames folder
 async function upload_to_drive(url, filename, username) {
   const data = await download(url);
+  
+  // username will be used as the folder for googledrive
   googleDriveHelper.uploadFile(data, filename, username);
 }
 
