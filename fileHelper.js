@@ -1,5 +1,3 @@
-const https = require('https')
-const fs = require('fs');
 const googleDriveHelper  = require('./googleDriveHelper.js')
 const request = require('request');
 
@@ -27,13 +25,20 @@ const download = function(url)  {
     });
 }
 
-// Input: A link to a picture, filename, and username
+// Input: A link to a picture, filename, and username (Filename should be without the extension)
 // Description: Takes the link and uploads it to the google drive into that usernames folder
-async function upload_to_drive(url, filename, username) {
+async function upload_to_drive(url, filename, fileExtension, username) {
   const data = await download(url);
-  
+  let driveFileName = filename.concat(fileExtension);
   // username will be used as the folder for googledrive
-  googleDriveHelper.uploadFile(data, filename, username);
+  googleDriveHelper.uploadFile(data, driveFileName, username);
+}
+
+/*Input: A link to a file and verifies that it is a picture 
+* Output: Boolean
+*/  
+function _validate_picture(url) {
+
 }
 
 // Export the functions

@@ -22,7 +22,8 @@ client.on('message', msg=>{
     if (msg.attachments.size > 0) {
         msg.attachments.forEach(function(value, key) {
             // Upload to drive using the proxyURL, file id, and the username as inputs
-            fileHelper.upload_to_drive(value['proxyURL'], value['id'], msg.author.username);
+            let fileExtension = value['name'].match(/\.[0-9a-z]+$/i)[0];
+            fileHelper.upload_to_drive(value['proxyURL'], value['id'], fileExtension, msg.author.username);
         })
     }
     if (msg.embeds.length > 0) {

@@ -88,7 +88,6 @@ function uploadFile(data, fileName, username) {
                   parents: [userFolderId]
               };
               const media = {
-                  mimeType: 'image/png',
                   body: data
               };
       
@@ -121,7 +120,6 @@ function uploadFile(data, fileName, username) {
                     parents: [userFolderId]
                 };
                 const media = {
-                    mimeType: 'image/png',
                     body: data
                 };
         
@@ -148,7 +146,6 @@ function uploadFile(data, fileName, username) {
                 parents: [userFolderId]
               };
               const media = {
-                  mimeType: 'image/png',
                   body: data
               };
       
