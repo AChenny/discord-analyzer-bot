@@ -27,7 +27,19 @@ client.on('message', msg=>{
         })
     }
     if (msg.embeds.length > 0) {
-        console.log("Contains embeds.");
+        msg.embeds.forEach(function(value) {
+            // Check if the thumbnail has a video
+            if (value.video != null) {
+                // Upload the video thumbnail to drive
+                let fileExtension = value.video.url.match(/\.[0-9a-z]+$/i)[0];
+                fileHelper.upload_to_drive(value.url, msg.id, fileExtension, msg.author.username);
+            }
+            else {
+                // Upload the picture thumbnail to drive
+                let fileExtension = value.url.match(/\.[0-9a-z]+$/i)[0];
+                fileHelper.upload_to_drive(value.url, msg.id, fileExtension, msg.author.username);
+            }
+        });
     }
 })
 
