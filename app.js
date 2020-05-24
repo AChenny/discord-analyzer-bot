@@ -19,7 +19,9 @@ const SUPPORTED_FILE_TYPES = [
     'image'
 ];
 
-
+const SUPPORTED_FILE_EXTENSIONS = [
+    '.webm', '.jpg', '.jpeg', '.png', '.mp4', '.gif', '.docx', '.doc', '.pdf', '.txt'
+];
 
 // Create commands for the bot
 client.on('ready', () => {
@@ -31,8 +33,24 @@ client.on('message', msg=>{
     if (msg.attachments.size > 0) {
         msg.attachments.forEach(function(value, key) {
             // Upload to drive using the url, file id, and the username as inputs
-            let fileExtension = value['name'].match(/\.[0-9a-z]+$/i)[0];
+            let fileExtension;
+            try {
+                fileExtension = value['name'].match(/\.[0-9a-z]+$/i)[0];
+                if (!SUPPORTED_FILE_EXTENSIONS.includes(fileExtension)) {
+                    console.log('WARNING: Unsupported file extension'.concat(fileExtension));
+                }
+            }
+            catch (err){
+                if (err instanceof TypeError) {
+                    console.log("File extension error. Uploading as binary.");
+                    fileExtension = '';
+                }
+                else {
+                    throw err;
+                }
+            }
             fileHelper.upload_to_drive(value['url'], value['id'], fileExtension, msg.author.username);
+
         })
     }
     if (msg.embeds.length > 0) {
