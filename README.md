@@ -23,7 +23,7 @@ These instructions will get you started on creating your bot
 
 
 ## Use Cases
-### 1. Storing files into google drive
+### 1. Storing files into Google Drive
 While your discord bot is running and is invited to your discord server, all files and some links to media will be uploaded to your google drive
 
 ## Future Features
@@ -31,6 +31,7 @@ While your discord bot is running and is invited to your discord server, all fil
 * Create template to run this bot on AWS
 * Store text into a database 
 
+## Authors
 * **Anderson Chen** - (https://github.com/AChenny)
 
 ## License
