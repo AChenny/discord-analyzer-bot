@@ -50,7 +50,6 @@ client.on('message', msg=>{
                 }
             }
             fileHelper.upload_to_drive(value['url'], value['id'], fileExtension, msg.author.username);
-
         })
     }
     if (msg.embeds.length > 0) {

@@ -1,4 +1,5 @@
-const googleDriveHelper  = require('./googleDriveHelper.js')
+const googleDriveHelper  = require('./googleDriveHelper.js');
+const s3BucketHelper = require('./s3BucketHelper.js');
 const request = require('request');
 
 // Input: A proxy link to the file to download
@@ -30,8 +31,9 @@ const download = function(url)  {
 async function upload_to_drive(url, filename, fileExtension, username) {
   const data = await download(url);
   let driveFileName = filename.concat(fileExtension);
-  // username will be used as the folder for googledrive
-  googleDriveHelper.uploadFile(data, driveFileName, username);
+
+  // TODO: Upload to s3 bucket
+
 }
 
 /*Input: A link to a file and verifies that it is a picture 
