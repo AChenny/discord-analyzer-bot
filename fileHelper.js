@@ -1,4 +1,3 @@
-const googleDriveHelper  = require('./googleDriveHelper.js');
 const s3BucketHelper = require('./s3BucketHelper.js');
 const request = require('request');
 
@@ -33,7 +32,7 @@ async function upload_to_drive(url, filename, fileExtension, username) {
   let driveFileName = filename.concat(fileExtension);
 
   // TODO: Upload to s3 bucket
-
+  s3BucketHelper.upload_file(data, driveFileName, username);
 }
 
 /*Input: A link to a file and verifies that it is a picture 
