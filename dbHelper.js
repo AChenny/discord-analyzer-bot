@@ -13,7 +13,8 @@ const mysql = require('mysql2/promise');
 //      database_name (String)
 //          The name of the database that this query will be sent to
 //  Returns:
-//      None
+//      [ fields, rows ] (Array)
+//          Returns all the rows and the columns as a 2 dimensional array. Fields are the definitions, rows are values
 async function query_db(query, database_name) {
     const connection = await mysql.createConnection(
         {
@@ -26,7 +27,7 @@ async function query_db(query, database_name) {
     // query database
     const [rows, fields] = await connection.query(query);
 
-    return;
+    return [fields, rows];
 }
 
 // Description: Begins a transaction, sends the list of queries from arrays and commits or rollsback if there is an error
@@ -70,7 +71,6 @@ async function send_queries_to_db_in_transaction(queries, database_name) {
             }
         })
         if (query_success) {
-            console.log("Committing...");
             let commit_response = await connection.commit();
             console.log("Commit Success!")
         }

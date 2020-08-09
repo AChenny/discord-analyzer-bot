@@ -25,14 +25,25 @@ const download = function(url)  {
     });
 }
 
-// Input: A link to a picture, filename, and username (Filename should be without the extension)
-// Description: Takes the link and uploads it to the google drive into that usernames folder
+// Description: Takes the link and uploads it into the drive into that usernames folder
+// Parameters:
+//    url (String)
+//        The url to the picture to the media file to be uploaded
+//    filename (String)
+//        The filename without the fileExtension
+//    fileExtension (String)
+//        The file extension of the file
+//            Example: '.png'
+//    username (String)
+//        The name of the user sending the media file. Which will be used to create them a folder in the drive
 async function upload_to_drive(url, filename, fileExtension, username) {
   const data = await download(url);
   let driveFileName = filename.concat(fileExtension);
 
-  // TODO: Upload to s3 bucket
-  s3BucketHelper.upload_file(data, driveFileName, username);
+  // Upload to s3 bucket
+  let bucketUrl = await s3BucketHelper.upload_file(data, driveFileName, username);
+
+  return bucketUrl;
 }
 
 /*Input: A link to a file and verifies that it is a picture 
