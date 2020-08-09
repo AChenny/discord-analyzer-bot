@@ -11,6 +11,8 @@ const token = config.authentication.token;
 
 // Include helper modules
 const fileHelper = require("./fileHelper.js");
+const dbHelper = require("./dbHelper.js");
+const queryHelper = require("./queryHelper.js");
 
 // Constants
 const SUPPORTED_FILE_TYPES = [
@@ -23,15 +25,26 @@ const SUPPORTED_FILE_EXTENSIONS = [
     '.webm', '.jpg', '.jpeg', '.png', '.mp4', '.gif', '.docx', '.doc', '.pdf', '.txt'
 ];
 
+var channels = client.guilds;
+
 // Create commands for the bot
 client.on('ready', () => {
     console.log('Client is ready!');
 });
 
 // Main message handler
-client.on('message', msg=>{
+client.on('message', async function(msg) {
+    // let author_query = queryHelper.create_author_query(msg.author.id, msg.author.username, msg.author.discriminator);
+    // let server_query = queryHelper.create_server_query(msg.guild.id, msg.guild.name);
+    // let queries = [];
+    // queries.push(author_query);
+    // queries.push(server_query);
+    // dbHelper.send_queries_to_db_in_transaction(queries, "beta_bois");
+
+    // Check for media and upload then get the object URL in the bucket
+    let objectUrl;
     if (msg.attachments.size > 0) {
-        msg.attachments.forEach(function(value, key) {
+        await asyncForEach (msg.attachments.array(), async (value, key) => {
             // Upload to drive using the url, file id, and the username as inputs
             let fileExtension;
             try {
@@ -49,32 +62,26 @@ client.on('message', msg=>{
                     throw err;
                 }
             }
-            fileHelper.upload_to_drive(value['url'], value['id'], fileExtension, msg.author.username);
-        })
+            objectUrl = await fileHelper.upload_to_drive(value['url'], value['id'], fileExtension, msg.author.username);
+        });
     }
     if (msg.embeds.length > 0) {
-        msg.embeds.forEach(function(value) {
+        await asyncForEach (msg.embeds, async (value) => {
             if (SUPPORTED_FILE_TYPES.includes(value.type)) {
                 // Check if the thumbnail has a video
-                if (value.video != null) {
-                    // Try to get the file extension from the url, you you can't then upload as a mp4
-                    try {
-                        let fileExtension = value.video.url.match(/\.[0-9a-z]+$/i)[0];
-                        fileHelper.upload_to_drive(value.video.url, msg.id, fileExtension, msg.author.username);
-                    }
-                    catch {
-                        fileHelper.upload_to_drive(value.video.url, msg.id, '.mp4', msg.author.username);
-                    }
-                    
+                let mediaUrl = value.video ? value.video.url : value.url;
+
+                // Try to get the file extension from the url. If none can be found, then upload the file as default mp4 or png depending on the media
+                let fileExtension = mediaUrl.match(/\.[0-9a-z]+$/i)[0];
+                if (fileExtension) {
+                    objectUrl = await fileHelper.upload_to_drive(mediaUrl, msg.id, fileExtension, msg.author.username);
                 }
                 else {
-                    // Try to get the file extension from the url, if you can't then upload as a png
-                    try {
-                        let fileExtension = value.url.match(/\.[0-9a-z]+$/i)[0];
-                        fileHelper.upload_to_drive(value.url, msg.id, fileExtension, msg.author.username);
+                    if (value.video) {
+                        objectUrl = await fileHelper.upload_to_drive(mediaUrl, msg.id, '.mp4', msg.author.username);
                     }
-                    catch {
-                        fileHelper.upload_to_drive(value.url, msg.id, '.png', msg.author.username);
+                    else {
+                        objectUrl = await fileHelper.upload_to_drive(value.url, msg.id, '.png', msg.author.username);
                     }
                 }
             }
@@ -83,7 +90,21 @@ client.on('message', msg=>{
             }
         });
     }
+    console.log(objectUrl);
 })
+
+// Description: Asynchrounous foreach function, works the same way as foreach, but async.
+// Input:
+//      array (Array)
+//          Some array to loop through
+//      callback (function)
+//          Some async function to call on the array
+// Output: None
+async function asyncForEach(array, callback) {
+    for (let index = 0; index < array.length; index++) {
+      await callback(array[index], index, array);
+    }
+}
 
 // Login to client
 client.login(token);
