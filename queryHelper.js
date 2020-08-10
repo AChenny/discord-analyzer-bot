@@ -17,7 +17,10 @@ const MEDIA_TYPE_IDENTIFIER_MAP = {
 const AUTHOR_TABLE_NAME = 'authors';
 const SERVER_TABLE_NAME = 'servers';
 const MEDIA_TABLE_NAME = 'medias';
+const CHANNEL_TABLE_NAME = 'channels';
 const MESSAGE_TABLE_NAME = 'messages';
+const MENTION_TABLE_NAME = 'mentions';
+
 
 // Description: Creates the author table query
 // Parameters:
@@ -48,7 +51,7 @@ function create_author_query (id, username, discriminator, avatarUrl) {
     let columnNameString = Object.keys(parameters).join(', ');
     let valueStrings = Object.values(parameters).join(', ');
     
-    let query = `INSERT IGNORE INTO ${AUTHOR_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+    let query = `REPLACE ${AUTHOR_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
 
     return query;
 }
@@ -72,7 +75,7 @@ function create_server_query (serverId, serverName) {
     let columnNameString = Object.keys(parameters).join(', ');
     let valueStrings = Object.values(parameters).join(', ');
 
-    let query = `INSERT IGNORE INTO ${SERVER_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+    let query = `REPLACE ${SERVER_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
     return query;
 }
 
@@ -95,7 +98,7 @@ async function create_medias_query (mediaType, bucketUrl, size, width, height) {
     let mediaId = await create_unique_id_for_media(mediaType);
 
     let parameters = {
-        'id' : mediaId,
+        'id' : `"${mediaId}"`,
         'bucket_url' : `"${bucketUrl}"`,
     };
 
@@ -112,7 +115,7 @@ async function create_medias_query (mediaType, bucketUrl, size, width, height) {
     let columnNameString = Object.keys(parameters).join(', ');
     let valueStrings = Object.values(parameters).join(', ');
 
-    let query = `INSERT IGNORE INTO ${MEDIA_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+    let query = `INSERT INTO ${MEDIA_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
     return query;
 }
 
@@ -129,13 +132,79 @@ async function create_medias_query (mediaType, bucketUrl, size, width, height) {
 //              Example: 'text'
 //      topic (String)
 //          The topic of the channel
-function create_channel_query (channelId, name, isNsfw, type, topic) {
+function create_channel_query (channelId, name, isNsfw = false, type, topic) {
     let parameters = {
-        'id' : attachmentId,
-        'bucket_url' : `"${bucketUrl}"`,
-        'size' : size
+        'id' : channelId,
+        'name' : `"${name}"`,
+        'is_nsfw' : isNsfw ? 1 : 0 // nsfw flag will be by default false unless specified in query call
     };
+
+    if (type) {
+        parameters['type'] = `"${type}"`;
+    }
+    if (topic) {
+        parameters['topic'] = `${topic}`;
+    }
+
+    let columnNameString = Object.keys(parameters).join(', ');
+    let valueStrings = Object.values(parameters).join(', ');
+
+    let query = `REPLACE ${CHANNEL_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+    return query;
 }
+
+// Description: Creates a mentions table query
+// Parameters:
+//      authorId (String) *Required
+//          The id of the author
+//      messageId (String) *Required
+//          The ID of the message containing the mentions
+//      recipientsIds (Array of Strings) 
+//          A list of all the member ids mentioned
+//      everyoneMention (boolean)
+//          Flag to check if the author mentioned @everyone or @here
+// Returns:
+//      queries (Array of strings)
+//          Array of all the query mentions
+function create_mentions_query(authorId, messageId, recipientsIds, everyoneMention) {
+    // For each of the recipients create a new query
+    let queries = [];
+
+    // 2 cases, either: 
+    //      has recipients
+    if (recipientsIds) {
+        recipientsIds.forEach(function(recipientId) {
+        let parameters = {
+            'author_id' : authorId,
+            'recipient_id' : recipientId,
+            'message_id' : messageId
+        };
+        
+        let columnNameString = Object.keys(parameters).join(', ');
+        let valueStrings = Object.values(parameters).join(', ');
+
+        let query = `INSERT INTO ${MENTION_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+        queries.push(query);
+        })
+    }
+    //      @everyone
+    if (everyoneMention) {
+        let parameters = {
+            'author_id' : authorId,
+            'message_id' : messageId,
+            'everyone_mention' : "1"
+        };
+
+        let columnNameString = Object.keys(parameters).join(', ');
+        let valueStrings = Object.values(parameters).join(', ');
+
+        let query = `INSERT INTO ${MENTION_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+        queries.push(query);
+    }
+
+    return queries;
+}
+
 
 // Description: Creates a unique ID for medias
 // Parameters: 
@@ -163,7 +232,7 @@ async function create_unique_id_for_media (typeName) {
 
     // Get the x digit discriminator
     // Get the number of items from today's attachments [Definitions, Rows]
-    let queryResults = await dbHelper.query_db(`SELECT * FROM ${MESSAGE_TABLE_NAME} WHERE DATE(\`Date\`)=CURDATE();`, DATABASE_NAME );
+    let queryResults = await dbHelper.query_db(`SELECT * FROM ${MESSAGE_TABLE_NAME} WHERE DATE(\`Date\`)=CURDATE() AND ${MEDIA_TABLE_NAME} IS NOT NULL;`, DATABASE_NAME );
     
     // Get the number of attachments from today
     let numAttachmentsFromToday = queryResults[1].length;
@@ -182,5 +251,5 @@ async function create_unique_id_for_media (typeName) {
 
 // Export the functions
 module.exports = {
-    create_author_query, create_server_query, create_attachments_query: create_medias_query
+    create_author_query, create_server_query, create_medias_query, create_channel_query, create_mentions_query
 }
