@@ -8,6 +8,8 @@ const dbHelper = require("./dbHelper.js");
 const DATABASE_NAME = 'beta_bois';
 const NUM_UNIQUE_ID_DIGITS = 3;
 
+const MEDIA_ID_COLUMN_NAME = 'media_id';
+
 const MEDIA_TYPE_IDENTIFIER_MAP = {
     'embedded' : 'EMB',
     'attachment' : 'ATT'
@@ -37,7 +39,7 @@ const MENTION_TABLE_NAME = 'mentions';
 //          The query string to be sent to the database
 function create_author_query (id, username, discriminator, avatarUrl) {
     let parameters = {
-        'id': id, 
+        'id': `"${id}"`, 
         'username': `"${username}"`
     };
 
@@ -56,7 +58,6 @@ function create_author_query (id, username, discriminator, avatarUrl) {
     return query;
 }
 
-
 // Description: Creates a server table query
 // Parameters:
 //      serverId (String) *Required
@@ -66,9 +67,11 @@ function create_author_query (id, username, discriminator, avatarUrl) {
 // Returns:
 //      query (String)
 //          The query string to be sent to the database
+//      mediaId (String)
+//          The ID of the media in the table
 function create_server_query (serverId, serverName) {
     let parameters = {
-        'id' : serverId,
+        'id' : `"${serverId}"`,
         'name' : `"${serverName}"`
     };
 
@@ -116,7 +119,7 @@ async function create_medias_query (mediaType, bucketUrl, size, width, height) {
     let valueStrings = Object.values(parameters).join(', ');
 
     let query = `INSERT INTO ${MEDIA_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
-    return query;
+    return [query, mediaId];
 }
 
 // Description: Creates a channel table query
@@ -137,7 +140,7 @@ async function create_medias_query (mediaType, bucketUrl, size, width, height) {
 //          The query string to be sent to the database
 function create_channel_query (channelId, name, isNsfw = false, type, topic) {
     let parameters = {
-        'id' : channelId,
+        'id' : `"${channelId}"`,
         'name' : `"${name}"`,
         'is_nsfw' : isNsfw ? 1 : 0 // nsfw flag will be by default false unless specified in query call
     };
@@ -146,7 +149,7 @@ function create_channel_query (channelId, name, isNsfw = false, type, topic) {
         parameters['type'] = `"${type}"`;
     }
     if (topic) {
-        parameters['topic'] = `${topic}`;
+        parameters['topic'] = `"${topic}"`;
     }
 
     let columnNameString = Object.keys(parameters).join(', ');
@@ -178,9 +181,9 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
     if (recipientsIds) {
         recipientsIds.forEach(function(recipientId) {
         let parameters = {
-            'author_id' : authorId,
-            'recipient_id' : recipientId,
-            'message_id' : messageId
+            'author_id' : `"${authorId}"`,
+            'recipient_id' : `"${recipientId}"`,
+            'message_id' : `"${messageId}"`
         };
         
         let columnNameString = Object.keys(parameters).join(', ');
@@ -193,8 +196,8 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
     //      @everyone
     if (everyoneMention) {
         let parameters = {
-            'author_id' : authorId,
-            'message_id' : messageId,
+            'author_id' : `"${authorId}"`,
+            'message_id' : `"${messageId}"`,
             'everyone_mention' : "1"
         };
 
@@ -227,21 +230,22 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
 //          The query string to be sent to the database
 function create_messages_query(messageId, content, serverId, authorId, channelId, mediaId) {
     let parameters = {
-        'id' : messageId,
+        'id' : `"${messageId}"`,
+        'date' : 'NOW()', // Query for date time now 
         'content' : `"${content}"`,
-        'server_id' : serverId,
-        'author_id' : authorId,
-        'channel_id' : channelId,
+        'server_id' : `"${serverId}"`,
+        'author_id' : `"${authorId}"`,
+        'channel_id' : `"${channelId}"`,
     };
 
     if (mediaId) {
-        parameters['media_id'] = `${mediaId}`;
+        parameters['media_id'] = `"${mediaId}"`;
     }
 
     let columnNameString = Object.keys(parameters).join(', ');
     let valueStrings = Object.values(parameters).join(', ');
 
-    let query = `REPLACE ${CHANNEL_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+    let query = `REPLACE ${MESSAGE_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
     return query;
 
 }
@@ -272,7 +276,7 @@ async function create_unique_id_for_media (typeName) {
 
     // Get the x digit discriminator
     // Get the number of items from today's attachments [Definitions, Rows]
-    let queryResults = await dbHelper.query_db(`SELECT * FROM ${MESSAGE_TABLE_NAME} WHERE DATE(\`Date\`)=CURDATE() AND ${MEDIA_TABLE_NAME} IS NOT NULL;`, DATABASE_NAME );
+    let queryResults = await dbHelper.query_db(`SELECT * FROM ${MESSAGE_TABLE_NAME} WHERE DATE(\`Date\`)=CURDATE() AND ${MEDIA_ID_COLUMN_NAME} IS NOT NULL;`, DATABASE_NAME );
     
     // Get the number of attachments from today
     let numAttachmentsFromToday = queryResults[1].length;

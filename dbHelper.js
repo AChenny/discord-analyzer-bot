@@ -79,6 +79,26 @@ async function send_queries_to_db_in_transaction(queries, database_name) {
     return;
 }
 
+// Description: Checks if id exists in table
+// Parameters: 
+//      databaseName (String)
+//          The database to check in
+//      tableName (String)
+//          The name of the table
+//      id (String)
+//          The ID to check for
+// Example: let exists = dbHelper.check_if_id_exists_in_table('databaseName', 'tableName', '33');
+// Returns:
+//      exists (boolean)
+//          Boolean flag, true if able to find the id
+async function check_if_id_exists_in_table(databaseName, tableName, id) {
+    let query = `SELECT * FROM ${tableName} WHERE id = ${id};`;
+
+    let [fields, rows ] = await query_db(query, databaseName);
+
+    return (rows.length > 0 ) ? true : false;
+}
+
 // Description: Asynchrounous foreach function, works the same way as foreach, but async.
 // Input:
 //      array (Array)
@@ -94,5 +114,5 @@ async function asyncForEach(array, callback) {
 
 // Export the functions
 module.exports = {
-    query_db, send_queries_to_db_in_transaction
+    query_db, send_queries_to_db_in_transaction, check_if_id_exists_in_table
 }
