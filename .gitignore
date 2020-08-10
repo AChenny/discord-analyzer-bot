@@ -2,3 +2,6 @@ config.json
 credentials.json
 token.json
 node_modules
+test_files/
+.vscode/
+ec2key.ppk
