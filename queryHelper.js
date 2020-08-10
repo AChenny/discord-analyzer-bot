@@ -132,6 +132,9 @@ async function create_medias_query (mediaType, bucketUrl, size, width, height) {
 //              Example: 'text'
 //      topic (String)
 //          The topic of the channel
+// Returns:
+//      query (String)
+//          The query string to be sent to the database
 function create_channel_query (channelId, name, isNsfw = false, type, topic) {
     let parameters = {
         'id' : channelId,
@@ -205,6 +208,43 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
     return queries;
 }
 
+// Description: Creates a messages table query
+// Parameters:
+//      messageId (String) *Required
+//          The id of the message
+//      content (String) *Required
+//          The contents of the message
+//      serverId (String) *Required
+//          The id of the server
+//      authorId (String) *Required
+//          The ID of the author
+//      channelId (String) *Required
+//          The ID of the channel
+//      mediaId (String) 
+//          The id of the media, if applicable
+// Returns:
+//      query (String)
+//          The query string to be sent to the database
+function create_messages_query(messageId, content, serverId, authorId, channelId, mediaId) {
+    let parameters = {
+        'id' : messageId,
+        'content' : `"${content}"`,
+        'server_id' : serverId,
+        'author_id' : authorId,
+        'channel_id' : channelId,
+    };
+
+    if (mediaId) {
+        parameters['media_id'] = `${mediaId}`;
+    }
+
+    let columnNameString = Object.keys(parameters).join(', ');
+    let valueStrings = Object.values(parameters).join(', ');
+
+    let query = `REPLACE ${CHANNEL_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
+    return query;
+
+}
 
 // Description: Creates a unique ID for medias
 // Parameters: 
@@ -251,5 +291,5 @@ async function create_unique_id_for_media (typeName) {
 
 // Export the functions
 module.exports = {
-    create_author_query, create_server_query, create_medias_query, create_channel_query, create_mentions_query
+    create_author_query, create_server_query, create_medias_query, create_channel_query, create_mentions_query, create_messages_query
 }
