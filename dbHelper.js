@@ -57,7 +57,7 @@ async function send_queries_to_db_in_transaction(queries, database_name) {
     //      Else, commit
     const start_queries = async () => {
         let query_success = true;
-        await asyncForEach(queries, async (query) => {
+        await async_for_each(queries, async (query) => {
             console.log(`Sending query: ${query}`);
             try {
                 await connection.query(query);
@@ -93,7 +93,6 @@ async function send_queries_to_db_in_transaction(queries, database_name) {
 //          Boolean flag, true if able to find the id
 async function check_if_id_exists_in_table(databaseName, tableName, id) {
     let query = `SELECT * FROM ${tableName} WHERE id = ${id};`;
-
     let [fields, rows ] = await query_db(query, databaseName);
 
     return (rows.length > 0 ) ? true : false;
@@ -106,7 +105,7 @@ async function check_if_id_exists_in_table(databaseName, tableName, id) {
 //      callback (function)
 //          Some async function to call on the array
 // Output: None
-async function asyncForEach(array, callback) {
+async function async_for_each(array, callback) {
     for (let index = 0; index < array.length; index++) {
       await callback(array[index], index, array);
     }
