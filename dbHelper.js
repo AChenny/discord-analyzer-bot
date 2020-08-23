@@ -69,7 +69,7 @@ async function send_queries_to_db_in_transaction(queries, database_name) {
                 // If any of the queries has an error, set flag to false and 
                 query_success = false;
             }
-        })
+        });
         if (query_success) {
             let commit_response = await connection.commit();
             console.log("Commit Success!")
