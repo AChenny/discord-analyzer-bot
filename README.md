@@ -27,9 +27,12 @@ These instructions will get you started on creating your bot
 While your discord bot is running and is invited to your discord server, all files and some links to media will be uploaded to your google drive
 
 ## Future Features
-### 
+###
+[Trello Board](https://trello.com/b/dspNtRPW)
 * Create template to run this bot on AWS
-* Store text into a database 
+* Store text into a database
+
+
 
 ## Authors
 * **Anderson Chen** - (https://github.com/AChenny)
