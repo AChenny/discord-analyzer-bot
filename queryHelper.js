@@ -24,6 +24,16 @@ const CHANNEL_TABLE_NAME = 'channels';
 const MESSAGE_TABLE_NAME = 'messages';
 const MENTION_TABLE_NAME = 'mentions';
 
+const SUPPORTED_FILE_TYPES = [
+    'video',
+    'gifv',
+    'image'
+];
+
+const SUPPORTED_FILE_EXTENSIONS = [
+    '.webm', '.jpg', '.jpeg', '.png', '.mp4', '.gif', '.docx', '.doc', '.pdf', '.txt'
+];
+
 
 // Description: Creates the author table query
 // Parameters:
@@ -216,6 +226,9 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
 // Parameters:
 //      messageId (String) *Required
 //          The id of the message
+//      createdTimestamp (int) *Required
+//          The timestamp of message in milliseconds since Unix Epoch
+//          -> Refer to https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTime
 //      content (String) *Required
 //          The contents of the message
 //      serverId (String) *Required
@@ -229,10 +242,11 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
 // Returns:
 //      query (String)
 //          The query string to be sent to the database
-function create_messages_query(messageId, content, serverId, authorId, channelId, mediaId) {
+function create_messages_query(messageId, createdTimestamp, content, serverId, authorId, channelId, mediaId) {
+    let timestamp = format_timestamp(createdTimestamp);
     let parameters = {
         'id' : `"${messageId}"`,
-        'date' : 'NOW()', // Query for date time now 
+        'date' : `"${timestamp}"`,
         'content' : `"${content}"`,
         'server_id' : `"${serverId}"`,
         'author_id' : `"${authorId}"`,
@@ -248,9 +262,7 @@ function create_messages_query(messageId, content, serverId, authorId, channelId
 
     let query = `REPLACE ${MESSAGE_TABLE_NAME} (${columnNameString}) VALUES (${valueStrings});`;
     return query;
-
 }
-
 
 // Description: 
 //      Gets media, mentions, and messages queries from a message mapping
@@ -316,7 +328,9 @@ async function get_queries_from_message(message) {
                 console.log("Unsupported file type: ".concat(value.type));
             }
             // TODO: Somehow get the size of the embedded media.
-            let mediaQueryResults = await create_medias_query('embedded', objectUrl, value.size, value.thumbnail.width, value.thumbnail.height);
+            let mediaWidth =  value.thumbnail ? value.thumbnail.width : null;
+            let mediaHeight = value.thumbnail ? value.thumbnail.height : null;
+            let mediaQueryResults = await create_medias_query('embedded', objectUrl, value.size, mediaWidth, mediaHeight);
             queries.push(mediaQueryResults[0]);
             mediaId = mediaQueryResults[1];
         });
@@ -338,7 +352,8 @@ async function get_queries_from_message(message) {
     }
 
     // Create message query
-    queries.push(create_messages_query(message.id, message.content, message.guild.id, message.author.id, message.channel.id, mediaId ));
+    let createdTimestamp = message.createdTimestamp;
+    queries.push(create_messages_query(message.id, createdTimestamp, message.content, message.guild.id, message.author.id, message.channel.id, mediaId ));
 
     // Return the queries as a string
     return queries;
@@ -359,7 +374,7 @@ async function create_unique_id_for_media (typeName) {
         let numZeros = (Math.pow(10, NUM_UNIQUE_ID_DIGITS )).toString().slice(-NUM_UNIQUE_ID_DIGITS);
         return (numZeros + num).substr(-NUM_UNIQUE_ID_DIGITS)
     }
-
+ 
     // Get the 6 digit date code
     let dateNow = new Date();
     let year = dateNow.getFullYear().toString().slice(-2);
@@ -398,6 +413,23 @@ async function asyncForEach(array, callback) {
     for (let index = 0; index < array.length; index++) {
       await callback(array[index], index, array);
     }
+}
+
+// Description: Converts timestamp milliseconds to a formatted SQL TIMESTAMP datatype string
+function format_timestamp(timestamp) {
+    let d = new Date(timestamp);
+    let year = d.getFullYear();
+    let month = ("0" + d.getMonth()).slice(-2);
+    let day = ("0" + d.getDate()).slice(-2);
+
+    let hours = ("0" + d.getHours()).slice(-2);
+    let minutes = ("0" + d.getMinutes()).slice(-2);
+    let seconds = ("0" + d.getSeconds()).slice(-2);
+
+
+    let timeStampString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+    return timeStampString;
 }
 
 // Export the functions

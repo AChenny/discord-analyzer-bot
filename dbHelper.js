@@ -27,6 +27,8 @@ async function query_db(query, database_name) {
     // query database
     const [rows, fields] = await connection.query(query);
 
+    connection.end();
+
     return [fields, rows];
 }
 

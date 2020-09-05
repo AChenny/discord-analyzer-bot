@@ -12,21 +12,14 @@ const DATABASE_NAME = config.database_name;
 const AUTHORS_TABLE_NAME = config.authors_table_name;
 const SERVERS_TABLE_NAME = config.servers_table_name;
 const CHANNELS_TABLE_NAME = config.channels_table_name;
+const MESSAGES_TABLE_NAME = config.messages_table_name;
 
 // Include helper modules
 const dbHelper = require("./dbHelper.js");
 const queryHelper = require("./queryHelper.js");
+const { check_if_id_exists_in_table } = require('./dbHelper.js');
 
 // Constants
-const SUPPORTED_FILE_TYPES = [
-    'video',
-    'gifv',
-    'image'
-];
-
-const SUPPORTED_FILE_EXTENSIONS = [
-    '.webm', '.jpg', '.jpeg', '.png', '.mp4', '.gif', '.docx', '.doc', '.pdf', '.txt'
-];
 
 // Create commands for the bot
 client.on('ready', () => {
@@ -36,13 +29,15 @@ client.on('ready', () => {
 // Main message handler
 client.on('message', async function(msg) {
     if (msg.content == '!sync') {
+        
         let usersPromise = await msg.guild.members.fetch();
-
+        
         let users = usersPromise.array();
         let authors = [];
-    
+        
         // For each user, check if the user exists in the table, create author object
         for (user of users) {
+
             userId = user.id;
 
             if (await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, AUTHORS_TABLE_NAME, userId)) {
@@ -67,22 +62,32 @@ client.on('message', async function(msg) {
 
         // Get all the previous messages
         let finishFlag = false;
+        let lastId;
+        let messages;
         while(!finishFlag) {
-            let messages = await (await msg.channel.messages.fetch({limit: 100})).array();
-            // Loop through the 100 messages and create query
-            for (message of messages) {
-                messageId = message.id;
-                messageContent = message.content;
-                serverId = message.guild.id;
-                channelId = message.channel.id;
+            messages = await (await msg.channel.messages.fetch({before: lastId, limit: 100})).array();
 
+            if (messages.length == 0) {
+                finishFlag = true;
             }
             
+            // Loop through the 100 messages and create query
+            for (message of messages) {
+                // Check if the message is already saved
+                if (await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, MESSAGES_TABLE_NAME, message.id)) {
+                    continue;
+                }
+                syncQueries = syncQueries.concat(await queryHelper.get_queries_from_message(message));
+            }
+            if (messages[(messages.length)-1]) {
+                lastId = messages[(messages.length)-1].id;
+                console.log("LAST ID: " + lastId);
+            }
+            else {
+                break;
+            }
         }
         
-        let messages_2 = await msg.channel.messages.fetch({before: messages.array()[messages.array().length-1].id});
-        
-
         dbHelper.send_queries_to_db_in_transaction(syncQueries, DATABASE_NAME);
     }
     else {
