@@ -3,6 +3,7 @@
 
 // Initialize the discord application
 const Discord = require('discord.js');
+const fs = require('fs');
 const client = new Discord.Client();
 
 // Read from config file to get settings
@@ -113,6 +114,33 @@ client.on('message', async function(msg) {
         }
         console.log("Finished sync!");
         message.channel.send('Finished syncing!');
+    }
+    else if (msg.content.startsWith('!ignore')) {
+        // Get the mentioned user(s) and add them to the config file to ignore
+        const configFileName = 'config.json';
+        let userMentions = msg.mentions.members.array();
+        
+        // Update the ignore list in the config.json
+        fs.readFile(configFileName, async (err, data) => {
+            // Constants
+            const ignoreUsersListKey = 'ignore_users_list';
+
+            if(err) throw err;
+            let configData = await JSON.parse(data);
+            let successfulIgnores = []
+
+            for (i in userMentions) {
+                let ignoreUserId = userMentions[i].id;
+                if (!configData[ignoreUsersListKey].includes(ignoreUserId)) {
+                    configData[ignoreUsersListKey].push(userMentions[i].id);
+                }
+            }
+            fs.writeFileSync(configFileName, JSON.stringify(configData, null, 4));
+            msg.channel.send("__All Ignores__")
+            for (i in configData[ignoreUsersListKey]) {
+                msg.channel.send(`<@${configData[ignoreUsersListKey][i]}>`);
+            }
+        })
     }
     else {
         let queries = [];
