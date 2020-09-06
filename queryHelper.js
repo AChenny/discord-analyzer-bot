@@ -10,6 +10,7 @@ const DATABASE_NAME = 'beta_bois';
 const NUM_UNIQUE_ID_DIGITS = 3;
 
 const MEDIA_ID_COLUMN_NAME = 'media_id';
+const DATE_COLUMN_NAME = 'date';
 
 const MEDIA_TYPE_IDENTIFIER_MAP = {
     'embedded' : 'EMB',
@@ -97,6 +98,8 @@ function create_server_query (serverId, serverName) {
 // Parameters:
 //      mediaType (String) *Required
 //          The origin type of the media. Supported: ['embedded', 'attachment']
+//      date (Date) *Required
+//          The date object of time created of the media
 //      bucketUrl (String) *Required
 //          The URL to the media file in the bucket
 //      size (int)
@@ -108,8 +111,8 @@ function create_server_query (serverId, serverName) {
 // Returns:
 //      query (String)
 //          The query string to be sent to the database
-async function create_medias_query (mediaType, bucketUrl, size, width, height) {
-    let mediaId = await create_unique_id_for_media(mediaType);
+async function create_medias_query (mediaType, date, bucketUrl, size, width, height) {
+    let mediaId = await create_unique_id_for_media(mediaType, date);
 
     let parameters = {
         'id' : `"${mediaId}"`,
@@ -226,9 +229,8 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
 // Parameters:
 //      messageId (String) *Required
 //          The id of the message
-//      createdTimestamp (int) *Required
-//          The timestamp of message in milliseconds since Unix Epoch
-//          -> Refer to https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTime
+//      createdTimestamp (Date) *Required
+//          Date object of the time the message was created
 //      content (String) *Required
 //          The contents of the message
 //      serverId (String) *Required
@@ -244,6 +246,7 @@ function create_mentions_query(authorId, messageId, recipientsIds, everyoneMenti
 //          The query string to be sent to the database
 function create_messages_query(messageId, createdTimestamp, content, serverId, authorId, channelId, mediaId) {
     let timestamp = format_timestamp(createdTimestamp);
+
     let parameters = {
         'id' : `"${messageId}"`,
         'date' : `"${timestamp}"`,
@@ -278,6 +281,8 @@ async function get_queries_from_message(message) {
     // Check message for media, upload, then get the object URL in the bucket
     let objectUrl;
     let mediaId;
+    // Create the timestamp
+    let createdDate = new Date(message.createdTimestamp);
 
     // Check for attachments
     if (message.attachments.size > 0) {
@@ -302,7 +307,7 @@ async function get_queries_from_message(message) {
             objectUrl = await fileHelper.upload_to_drive(value['url'], value['id'], fileExtension, message.author.username);
             
             // [0] -> query, [1] -> mediaId
-            let mediaQueryResults = await create_medias_query('attachment', objectUrl, value.size, value.width, value.height);
+            let mediaQueryResults = await create_medias_query('attachment', createdDate, objectUrl, value.size, value.width, value.height);
             queries.push(mediaQueryResults[0]);
             mediaId = mediaQueryResults[1];
         });
@@ -330,7 +335,7 @@ async function get_queries_from_message(message) {
             // TODO: Somehow get the size of the embedded media.
             let mediaWidth =  value.thumbnail ? value.thumbnail.width : null;
             let mediaHeight = value.thumbnail ? value.thumbnail.height : null;
-            let mediaQueryResults = await create_medias_query('embedded', objectUrl, value.size, mediaWidth, mediaHeight);
+            let mediaQueryResults = await create_medias_query('embedded', createdDate, objectUrl, value.size, mediaWidth, mediaHeight);
             queries.push(mediaQueryResults[0]);
             mediaId = mediaQueryResults[1];
         });
@@ -352,8 +357,7 @@ async function get_queries_from_message(message) {
     }
 
     // Create message query
-    let createdTimestamp = message.createdTimestamp;
-    queries.push(create_messages_query(message.id, createdTimestamp, message.content, message.guild.id, message.author.id, message.channel.id, mediaId ));
+    queries.push(create_messages_query(message.id, createdDate, message.content, message.guild.id, message.author.id, message.channel.id, mediaId ));
 
     // Return the queries as a string
     return queries;
@@ -363,7 +367,9 @@ async function get_queries_from_message(message) {
 // Parameters: 
 //      type (String)
 //          The type of the media. Supported: [embed,attachment] 
-async function create_unique_id_for_media (typeName) {
+//      date (Date)
+//          The date object of the created media
+async function create_unique_id_for_media (typeName, date) {
     // Get the 3 letter type identifier
     let typeIdentifier = MEDIA_TYPE_IDENTIFIER_MAP[typeName];
     
@@ -376,16 +382,15 @@ async function create_unique_id_for_media (typeName) {
     }
  
     // Get the 6 digit date code
-    let dateNow = new Date();
-    let year = dateNow.getFullYear().toString().slice(-2);
-    let month = convert_to_two_digits(dateNow.getMonth());
+    let year = date.getFullYear().toString().slice(-2);
+    let month = convert_to_two_digits(date.getMonth());
     // Converts the month to 2 digits if it's less than 10
-    let day = convert_to_two_digits(dateNow.getDate());
+    let day = convert_to_two_digits(date.getDate());
     let dateCode = [year, month, day].join('');
 
     // Get the x digit discriminator
     // Get the number of items from today's attachments [Definitions, Rows]
-    let queryResults = await dbHelper.query_db(`SELECT * FROM ${MESSAGE_TABLE_NAME} WHERE DATE(\`Date\`)=CURDATE() AND ${MEDIA_ID_COLUMN_NAME} IS NOT NULL;`, DATABASE_NAME );
+    let queryResults = await dbHelper.query_db(`SELECT * FROM ${MESSAGE_TABLE_NAME} WHERE DATE(${DATE_COLUMN_NAME})= '${year}-${month}-${day}' AND ${MEDIA_ID_COLUMN_NAME} IS NOT NULL;`, DATABASE_NAME );
     
     // Get the number of attachments from today
     let numAttachmentsFromToday = queryResults[1].length;
@@ -415,21 +420,26 @@ async function asyncForEach(array, callback) {
     }
 }
 
-// Description: Converts timestamp milliseconds to a formatted SQL TIMESTAMP datatype string
-function format_timestamp(timestamp) {
-    let d = new Date(timestamp);
-    let year = d.getFullYear();
-    let month = ("0" + d.getMonth()).slice(-2);
-    let day = ("0" + d.getDate()).slice(-2);
+// Description: Converts Date object to a valid TIMESTAMP value in SQL
+//      Input:
+//          date (Date)
+//              The date object
+//      Output: 
+//          timestamp
+//              Valid TIMESTAMP value for SQL
+function format_timestamp(date) {
+    let year = date.getFullYear();
+    let month = ("0" + date.getMonth()).slice(-2);
+    let day = ("0" + date.getDate()).slice(-2);
 
-    let hours = ("0" + d.getHours()).slice(-2);
-    let minutes = ("0" + d.getMinutes()).slice(-2);
-    let seconds = ("0" + d.getSeconds()).slice(-2);
+    let hours = ("0" + date.getHours()).slice(-2);
+    let minutes = ("0" + date.getMinutes()).slice(-2);
+    let seconds = ("0" + date.getSeconds()).slice(-2);
 
 
-    let timeStampString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    let timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
-    return timeStampString;
+    return timestamp;
 }
 
 // Export the functions

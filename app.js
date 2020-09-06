@@ -60,24 +60,42 @@ client.on('message', async function(msg) {
             syncQueries.push(queryHelper.create_author_query(author.userId, author.username, author.discriminator));
         }
 
+        // Check if server exists in the table, if not add the server
+        if (!await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, SERVERS_TABLE_NAME, msg.guild.id)) {
+            console.log("New server..")
+            syncQueries.push(queryHelper.create_server_query(msg.guild.id, msg.guild.name));
+        };
+
+        // Check if the channel exists in the table, if not, add the channel
+        if (!await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, CHANNELS_TABLE_NAME, msg.channel.id)) {
+            let channel = msg.channel;
+            syncQueries.push(queryHelper.create_channel_query(channel.id, channel.name, channel.nsfw, channel.type, channel.topic));
+        };
+
+        dbHelper.send_queries_to_db_in_transaction(syncQueries, DATABASE_NAME);
+
         // Get all the previous messages
         let finishFlag = false;
         let lastId;
         let messages;
+
+        
         while(!finishFlag) {
             messages = await (await msg.channel.messages.fetch({before: lastId, limit: 100})).array();
-
+            
             if (messages.length == 0) {
                 finishFlag = true;
             }
             
             // Loop through the 100 messages and create query
             for (message of messages) {
+                let queries = []
                 // Check if the message is already saved
                 if (await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, MESSAGES_TABLE_NAME, message.id)) {
                     continue;
                 }
-                syncQueries = syncQueries.concat(await queryHelper.get_queries_from_message(message));
+                queries = queries.concat(await queryHelper.get_queries_from_message(message));
+                dbHelper.send_queries_to_db_in_transaction(queries, DATABASE_NAME);
             }
             if (messages[(messages.length)-1]) {
                 lastId = messages[(messages.length)-1].id;
@@ -87,8 +105,6 @@ client.on('message', async function(msg) {
                 break;
             }
         }
-        
-        dbHelper.send_queries_to_db_in_transaction(syncQueries, DATABASE_NAME);
     }
     else {
         let queries = [];
