@@ -93,6 +93,13 @@ client.on('message', async function(msg) {
                 if (await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, MESSAGES_TABLE_NAME, message.id)) {
                     continue;
                 }
+
+                // Check if the author of this message is added to the authors table
+                if (!await dbHelper.check_if_id_exists_in_table(DATABASE_NAME, AUTHORS_TABLE_NAME,  message.author.id)) {
+                    console.log("New author");
+                    queries.push(queryHelper.create_author_query(message.author.id, message.author.username, message.author.discriminator));
+                };
+
                 queries = queries.concat(await queryHelper.get_queries_from_message(message));
                 dbHelper.send_queries_to_db_in_transaction(queries, DATABASE_NAME);
             }
@@ -104,6 +111,8 @@ client.on('message', async function(msg) {
                 break;
             }
         }
+        console.log("Finished sync!");
+        message.channel.send('Finished syncing!');
     }
     else {
         let queries = [];
