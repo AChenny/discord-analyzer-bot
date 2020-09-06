@@ -21,6 +21,7 @@ const queryHelper = require("./queryHelper.js");
 const { check_if_id_exists_in_table } = require('./dbHelper.js');
 
 // Constants
+const configFileName = 'config.json';
 
 // Create commands for the bot
 client.on('ready', () => {
@@ -34,7 +35,11 @@ client.on('message', async function(msg) {
         return;
     }
     if (msg.content == '!sync') {
-        
+        if (!config.tracking_channels.includes(msg.channel.id)) {
+            msg.channel.send("This channel is not being tracked, input `!track` to start tracking.");
+            return;
+        }
+
         let usersPromise = await msg.guild.members.fetch();
         
         let users = usersPromise.array();
@@ -121,7 +126,6 @@ client.on('message', async function(msg) {
     }
     else if (msg.content.startsWith('!ignore')) {
         // Get the mentioned user(s) and add them to the config file to ignore
-        const configFileName = 'config.json';
         let userMentions = msg.mentions.members.array();
         
         // Update the ignore list in the config.json
@@ -148,7 +152,31 @@ client.on('message', async function(msg) {
             msg.channel.send("Config file updated, bot reset required.");
         })
     }
+    else if (msg.content == "!track") {
+        // Update the tracking list in config file
+        fs.readFile(configFileName, async (err, data) => {
+            // Constants
+            const trackingChannelsKey = 'tracking_channels';
+            
+            if(err) throw err;
+            let configData = await JSON.parse(data);
+            
+            let channelId = msg.channel.id;
+
+            if (!configData[trackingChannelsKey].includes(channelId)) {
+                configData[trackingChannelsKey].push(channelId);
+            }
+
+            fs.writeFileSync(configFileName, JSON.stringify(configData, null, 4));
+            // TODO: Fix this so that the config file can dynamically reload
+            msg.channel.send("Now tracking this channel. Restart bot to update config file.");
+        })
+    }
     else {
+        if (!config.tracking_channels.includes(msg.channel.id)) {
+            msg.channel.send("This channel is not being tracked, input `!track` to start tracking.")
+            return;
+        }
         let queries = [];
     
         // Create author query
