@@ -29,6 +29,10 @@ client.on('ready', () => {
 
 // Main message handler
 client.on('message', async function(msg) {
+    // Ignore this user if they're part of the ignored users list
+    if (config.ignore_users_list.includes(msg.author.id)) {
+        return;
+    }
     if (msg.content == '!sync') {
         
         let usersPromise = await msg.guild.members.fetch();
@@ -141,6 +145,9 @@ client.on('message', async function(msg) {
                 msg.channel.send(`<@${configData[ignoreUsersListKey][i]}>`);
             }
         })
+        
+        // TODO: Fix this so that the config file can dynamically reload
+        msg.channel.send("Config file updated, bot reset required.");
     }
     else {
         let queries = [];

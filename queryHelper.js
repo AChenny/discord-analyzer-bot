@@ -1,7 +1,6 @@
 // Description: This library contains all the functions that interact with queries and query responses
 
 // Imports
-const dateFns = require('date-fns');
 const dbHelper = require("./dbHelper.js");
 const fileHelper = require("./fileHelper.js");
 
