@@ -144,10 +144,9 @@ client.on('message', async function(msg) {
             for (i in configData[ignoreUsersListKey]) {
                 msg.channel.send(`<@${configData[ignoreUsersListKey][i]}>`);
             }
+            // TODO: Fix this so that the config file can dynamically reload
+            msg.channel.send("Config file updated, bot reset required.");
         })
-        
-        // TODO: Fix this so that the config file can dynamically reload
-        msg.channel.send("Config file updated, bot reset required.");
     }
     else {
         let queries = [];
