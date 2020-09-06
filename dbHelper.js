@@ -3,6 +3,7 @@
 // Imports
 const config = require('./config.json');
 const mysql = require('mysql2/promise');
+const { connect } = require('mysql2');
 // Constants and configuration
 
 // Description: Sends a query to a database using the configuration credentials
@@ -26,6 +27,8 @@ async function query_db(query, database_name) {
     );
     // query database
     const [rows, fields] = await connection.query(query);
+
+    connection.end();
 
     return [fields, rows];
 }
@@ -69,13 +72,16 @@ async function send_queries_to_db_in_transaction(queries, database_name) {
                 // If any of the queries has an error, set flag to false and 
                 query_success = false;
             }
-        })
+        });
         if (query_success) {
             let commit_response = await connection.commit();
             console.log("Commit Success!")
         }
+        
     }
-    start_queries();
+    await start_queries();
+    await connection.end();
+    
     return;
 }
 
