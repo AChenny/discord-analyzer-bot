@@ -341,6 +341,9 @@ async function get_queries_from_message(message) {
         });
     }
 
+    // Create message query
+    queries.push(create_messages_query(message.id, createdDate, message.content, message.guild.id, message.author.id, message.channel.id, mediaId ));
+
     // Check if there are any mentions create query from that
     if (message.mentions) {
         if (message.mentions.everyone) {
@@ -355,9 +358,6 @@ async function get_queries_from_message(message) {
             queries = queries.concat(create_mentions_query(message.author.id, message.id, mentionMemberIds));
         }
     }
-
-    // Create message query
-    queries.push(create_messages_query(message.id, createdDate, message.content, message.guild.id, message.author.id, message.channel.id, mediaId ));
 
     // Return the queries as a string
     return queries;

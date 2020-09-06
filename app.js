@@ -78,7 +78,6 @@ client.on('message', async function(msg) {
         let finishFlag = false;
         let lastId;
         let messages;
-
         
         while(!finishFlag) {
             messages = await (await msg.channel.messages.fetch({before: lastId, limit: 100})).array();
