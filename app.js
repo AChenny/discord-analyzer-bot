@@ -174,7 +174,6 @@ client.on('message', async function(msg) {
     }
     else {
         if (!config.tracking_channels.includes(msg.channel.id)) {
-            msg.channel.send("This channel is not being tracked, input `!track` to start tracking.")
             return;
         }
         let queries = [];
